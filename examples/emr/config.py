@@ -1,17 +1,13 @@
 import time
 import torch
 
-if __package__ is None or __package__ == '':
-    from utils import Namespace, caller_source
-else:
-    from .utils import Namespace, caller_source
-
+from utils import Namespace, caller_source
 
 config = {
     'Data': { # data setting
         'relative_path': "data/EntityMentionRelation",
-        'train_path': "conll04.corp_5_train.corp",
-        'valid_path': "conll04.corp_5_test.corp"
+        'train_path': "conll04.corp_1_train.corp",
+        'valid_path': "conll04.corp_1_test.corp"
     },
     'Model': { # model setting
         'embedding_dim': 8,

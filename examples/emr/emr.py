@@ -1,10 +1,10 @@
 '''
 # Example: Entity-Mention-Relation (EMR)
-## Pipeline
-This example follows the pipeline we discussed in our preliminary paper.
-1. Ontology Declaration
-2. Model Declaration
-3. Explicit inference
+## Steps
+This example follows the three declarative steps:
+1. Knowledge Declaration
+2. Data Declaration
+3. Learning Declaration
 '''
 
 #### With `regr`, we assign sensors to properties of concept.
@@ -23,35 +23,27 @@ from regr.graph.allennlp import AllenNlpGraph
 #### * `Config` contains configurations for model, data, and training.
 #### * `seed` is a useful function that resets random seed of all involving sub-systems: Python, numpy, and PyTorch, to make the performance of training consistent, as a demo.
 #from .data import Conll04SensorReader as Reader
-if __package__ is None or __package__ == '':
-    from data_spacy import Conll04SpaCyBinaryReader as Reader
-    from config import Config
-    from utils import seed
-else:
-    from .data_spacy import Conll04SpaCyBinaryReader as Reader
-    from .config import Config
-    from .utils import seed
+from data_spacy import Conll04SpaCyBinaryReader as Reader
+from config import Config
+from utils import seed
 
 
-#### "*Ontology Declaration*" is the first step in our pipeline.
+#### "*Knowledge Declaration*"
 #### A graph of the concepts, representing the ontology in this application, is declared.
 #### It can be compile from standard ontology formats like `OWL`, writen with python grammar directly, or combine both way.
 #### Here we just import the graph from `graph.py`.
 #### Please also refer to `graph.py` for details.
-def ontology_declaration():
-    if __package__ is None or __package__ == '':
-        from graph import graph
-    else:
-        from .graph import graph
+def knowledge_declaration():
+    from graph import graph
     return graph
 
 
-#### "*Model Declaration*" comes after "Ontology Declaration" in our pipeline.
+#### "*Data Declaration*" and "*Learning Declaration*"
 #### Sensors and learners are connected to the graph, what wraps the graph with functionalities to retieve data, forward computing, learning from error, and inference during all those processes.
-#### `graph` is a `Graph` object retrieved from the "Ontology Declaration".
+#### `graph` is a `Graph` object retrieved from the "Knowledge Declaration".
 #### `config` is configurations relatred to the model.
-def model_declaration(graph, config):
-    #### `Graph` objects has some kind of global variables.
+def data_and_learning_declaration(graph, config):
+    #### `Graph` class has some kind of global variables.
     #### Use `.detach()` to reset them to avoid baffling error.
     graph.detach()
 
@@ -71,43 +63,43 @@ def model_declaration(graph, config):
     work_for = graph['application/work_for']
     kill = graph['application/kill']
 
-    #### Create a `Conll04SensorReader` instance, to be assigned with properties, and allow the model to get corresponding data from it.
+    #### Create a `Reader` instance, to be assigned with properties, and allow the model to get corresponding data from it.
     reader = Reader()
 
-    #### The most important part in "Model Declaration" is to connect sensors (and learners) to the graph.
+    #### "*Data Declaration*"
     #### We start with linguistic concepts.
-    #### `SequenceSensor` provides the ability to read from a `TextField` in AllenNLP.
+    #### `SentenceSensor` provides the ability to read words from a `TextField` in AllenNLP.
     #### It takes two arguments, firstly the reader to read with, and secondly a `key` for the reader to refer to correct `TextField`.
     sentence['raw'] = SentenceSensor(reader, 'sentence')
-    #### `TokenInSequenceSensor` provides the ability to index tokens in a `TextField`.
-    #### Notice that the Conll04 dataset comes with phrase tokenized sentences.
-    #### Thus this is already a phrase-based sentence.
-    #### `TokenInSequenceSensor` takes the sentence `TextField` here and insert a token field to it.
-    #### Please also refer to AllenNLP `TextField` document for complicated relationship of it and its tokens.
+    #### `SentenceEmbedderSensor` provides the ability to index the words and convert them into word embeddings.
+    #### Notice that `SentenceEmbedderSensor` is a load pretrained embedding and do not train anymore.
     word['raw'] = SentenceEmbedderSensor('word', config.pretrained_dims['word'], sentence['raw'], pretrained_file=config.pretrained_files['word'])
+    #### We can also specify `SentenceEmbedderLearner` to train tokens with or without pretrained parameters.
+    #### Here `pos_tag` and `dep_tag` are also text-based in the original input.
     word['pos'] = SentenceEmbedderLearner('pos_tag', config.embedding_dim, sentence['raw'])
     word['dep'] = SentenceEmbedderLearner('dep_tag', config.embedding_dim, sentence['raw'])
     # possible to add more this kind
+    #### Then we can concatenate them together.
     word['all'] = ConcatSensor(word['raw'], word['pos'], word['dep'])
-    #### `RNNLearner` takes a sequence of representations as input, encodes them with recurrent nerual networks (RNN), like LSTM or GRU, and provides the encoded output.
-    #### Here we encode the word2vec output further with an RNN.
-    #### The first argument indicates the dimensions of internal representations, and the second one incidates we will encode the output of `phrase['w2v']`.
-    #### More optional arguments are avaliable, like `bidirectional` defaulted to `True` for context from both sides, and `dropout` defaulted to `0.5` for tackling overfitting.
+    #### `NGramSensor` use a sliding window to collect context for each word.
     word['ngram'] = NGramSensor(config.ngram, word['all'])
+    #### `RNNLearner` takes a sequence of representations as input, encodes them with recurrent nerual networks (RNN), like LSTM or GRU, and provides the encoded output.
     word['encode'] = RNNLearner(word['ngram'], layers=config.rnn.layers, bidirectional=config.rnn.bidirectional, dropout=config.dropout)
-    #### `CartesianProductSensor` is a `Sensor` that takes the representation from `phrase['emb']`, makes all possible combination of them, and generates a concatenating result for each combination.
-    #### This process takes no parameters.
-    #### But there is still a PyTorch module associated with it.
+    #### The output is high-dimensional after N-gram and bidirectional RNN. We want to have a compact representation with a simple fully connected layer.
     word['compact'] = MLPLearner(config.compact.layers, word['encode'], activation=config.activation)
+    #### `CartesianProductSensor` is a `Sensor` that takes the representation from `word['emb']`, makes all possible combination of them, and generates a concatenating result for each combination.
     pair['cat'] = CartesianProductSensor(word['compact'])
+    #### Also add some pair-wise features.
     pair['tkn_dist'] = TokenDistantSensor(config.distance_emb_size * 2, config.max_distance, sentence['raw'])
     pair['tkn_dep'] = TokenDepSensor(sentence['raw'])
     pair['tkn_dep_dist'] = TokenDepDistSensor(config.distance_emb_size, config.max_distance, sentence['raw'])
+    #### Map the onehot features to a dense feature space by a simple fully connected layer.
     pair['onehots'] = ConcatSensor(pair['tkn_dist'], pair['tkn_dep'], pair['tkn_dep_dist'])
     pair['emb'] = MLPLearner([config.relemb.emb_size,], pair['onehots'], activation=None)
+    #### Yet another pair-wise feature.
     pair['tkn_lca'] = TokenLcaSensor(sentence['raw'], word['compact'])
-    pair['all'] = ConcatSensor(pair['cat'], pair['tkn_lca'], pair['emb'])
-    pair['encode'] = ConvLearner(config.relconv.layers, config.relconv.kernel_size, pair['all'], activation=config.activation, dropout=config.dropout)
+    #### Put them all together.
+    pair['encode'] = ConcatSensor(pair['cat'], pair['tkn_lca'], pair['emb'])
 
     #### Then we connect properties with ground-truth from `reader`.
     #### `LabelSensor` takes the `reader` as argument to provide the ground-truth data.
@@ -123,10 +115,6 @@ def model_declaration(graph, config):
     #### The training of this model is then based on this inconsistency error.
     #### In this example, "ground-truth" `Sensor`s has no parameters to be trained, while predicting `Learner`s have all sets of paramters to be trained.
     #### The error also propagate backward through the computational path to all modules as assigned above.
-    #### Here we use `LogisticRegressionLearner`s, which is binary classifiers.
-    #### Notice the first argument, the "input dimention", takes a `* 2` because the output from `phrase['emb']` is bidirectional, having two times dimentions.
-    #### The second argument is base on what the prediction will be made.
-    #### The constructors make individule modules for them with seperated parameters, though they take same arguments.
     people['label'] = LogisticRegressionLearner(word['encode'])
     organization['label'] = LogisticRegressionLearner(word['encode'])
 
@@ -136,7 +124,6 @@ def model_declaration(graph, config):
     kill['label'] = LabelSensor(reader, 'Kill', output_only=True)
 
     #### We also connect the predictors for composed-concepts.
-    #### Notice the first argument, the "input dimention", takes a `* 4` because `pair['emb']` from `CartesianProductSensor` has double dimention again over `phrase['emb']`.
     work_for['label'] = LogisticRegressionLearner(pair['encode'])
     kill['label'] = LogisticRegressionLearner(pair['encode'])
 
@@ -148,14 +135,13 @@ def model_declaration(graph, config):
 #### The main entrance of the program.
 def main():
     save_config = Config.deepclone()
-    #### 1. "Ontology Declaration" to get a graph, as a partial program.
-    graph = ontology_declaration()
+    #### 1. "Knowledge Declaration" to get a graph, as a partial program.
+    graph = knowledge_declaration()
 
-    #### 2. "Model Declaration" to connect sensors and learners and get the full program.
-    lbp = model_declaration(graph, Config.Model)
+    #### 2. "Data Declaration" and "Learning Declaration" to connect sensors and learners and get the full program.
+    lbp = data_and_learning_declaration(graph, Config.Model)
 
     #### 3. Train and save the model
-    #### "Explicit inference" is done automatically in every call to the model.
     #### To have better reproducibility, we initial the random seeds of all subsystems.
     seed()
     #### Train the model with inference functionality inside.

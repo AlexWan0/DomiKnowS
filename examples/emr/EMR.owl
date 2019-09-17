@@ -10,7 +10,7 @@
   <owl:Ontology rdf:about="">
     <owl:imports rdf:resource="http://ontology.ihmc.us/ML/PhraseGraph.owl"/>
     <owl:imports rdf:resource="http://ontology.ihmc.us/ML/MLGraph.owl"/>
-    <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">This ontology contains EMR concepts. Created by Andrzej Uszok (auszok@ihmc.us), trimed for tutorial by Quan Guo (guoquan@msu.edu).</rdfs:comment>
+    <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">This ontology contains EMR concepts. Created by Andrzej Uszok (auszok@ihmc.us), tailored for tutorial by Quan Guo (guoquan@msu.edu).</rdfs:comment>
   </owl:Ontology>
   <owl:Class rdf:about="#word">
     <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">EMR ontology word.</rdfs:comment>

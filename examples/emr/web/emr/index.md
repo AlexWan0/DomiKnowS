@@ -1,6 +1,7 @@
 ---
+layout: default
 ---
 
 # `regr` examples
 
-[Entity-Mention-Relation](emr_full.html)
+[Entity-Mention-Relation](emr.html)
