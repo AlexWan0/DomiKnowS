@@ -63,18 +63,12 @@ def model_declaration(graph, config):
     word = graph['linguistic/word']
     pair = graph['linguistic/pair']
 
-    #### `people`, `organization`, `location`, `other`, and `O` are entities we want to extract in this demo.
+    #### `people` and `organization` are entities we want to extract in this demo.
     people = graph['application/people']
     organization = graph['application/organization']
-    location = graph['application/location']
-    other = graph['application/other']
-    #o = graph['application/O']
 
-    #### `people`, `organization`, `location`, `other`, and `O` are entities we want to extract in this demo.
+    #### `kill` and `work_for` are relations we want to extract in this demo.
     work_for = graph['application/work_for']
-    located_in = graph['application/located_in']
-    live_in = graph['application/live_in']
-    orgbase_on = graph['application/orgbase_on']
     kill = graph['application/kill']
 
     #### Create a `Conll04SensorReader` instance, to be assigned with properties, and allow the model to get corresponding data from it.
@@ -121,9 +115,6 @@ def model_declaration(graph, config):
     #### The last keyword argument `output_only` indicates that these sensors are not to be used with forward computation.
     people['label'] = LabelSensor(reader, 'Peop', output_only=True)
     organization['label'] = LabelSensor(reader, 'Org', output_only=True)
-    location['label'] = LabelSensor(reader, 'Loc', output_only=True)
-    other['label'] = LabelSensor(reader, 'Other', output_only=True)
-    #o['label'] = LabelSensor(reader, 'O', output_only=True)
 
     #### We connect properties with learners that generate predictions.
     #### Notice that we connect the predicting `Learner`s to the same properties as "ground-truth" `Sensor`s.
@@ -138,24 +129,15 @@ def model_declaration(graph, config):
     #### The constructors make individule modules for them with seperated parameters, though they take same arguments.
     people['label'] = LogisticRegressionLearner(word['encode'])
     organization['label'] = LogisticRegressionLearner(word['encode'])
-    location['label'] = LogisticRegressionLearner(word['encode'])
-    other['label'] = LogisticRegressionLearner(word['encode'])
-    #o['label'] = LogisticRegressionLearner(config.embedding_dim * 8, word['emb'])
 
     #### We repeat these on composed-concepts.
     #### There is nothing different in usage thought they are higher ordered concepts.
     work_for['label'] = LabelSensor(reader, 'Work_For', output_only=True)
-    live_in['label'] = LabelSensor(reader, 'Live_In', output_only=True)
-    located_in['label'] = LabelSensor(reader, 'Located_In', output_only=True)
-    orgbase_on['label'] = LabelSensor(reader, 'OrgBased_In', output_only=True)
     kill['label'] = LabelSensor(reader, 'Kill', output_only=True)
 
     #### We also connect the predictors for composed-concepts.
     #### Notice the first argument, the "input dimention", takes a `* 4` because `pair['emb']` from `CartesianProductSensor` has double dimention again over `phrase['emb']`.
     work_for['label'] = LogisticRegressionLearner(pair['encode'])
-    live_in['label'] = LogisticRegressionLearner(pair['encode'])
-    located_in['label'] = LogisticRegressionLearner(pair['encode'])
-    orgbase_on['label'] = LogisticRegressionLearner(pair['encode'])
     kill['label'] = LogisticRegressionLearner(pair['encode'])
 
     #### Lastly, we wrap these graph with `AllenNlpGraph` functionalities to get the full learning based program.
