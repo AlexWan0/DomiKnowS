@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from collections import Counter
-from .conll import Conll04CorpusReader
+from conll import Conll04CorpusReader
 
 class Stat():
     def setup(self): pass
