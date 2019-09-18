@@ -8,7 +8,6 @@ from owlready2 import *
 
 # Gurobi
 from gurobipy import *
-from examples.emr.emr.graph import phrase
 
 if __package__ is None or __package__ == '': 
     from regr.solver.ilpConfig import ilpConfig

@@ -6,14 +6,14 @@ from utils import Namespace, caller_source
 config = {
     'Data': { # data setting
         'relative_path': "data/EntityMentionRelation",
-        'train_path': "conll04.corp_1_train.corp",
-        'valid_path': "conll04.corp_1_test.corp"
+        'train_path': "conll04.corp_1_test.corp",
+        'valid_path': "conll04.corp_2_test.corp"
     },
     'Model': { # model setting
         'embedding_dim': 8,
         'ngram': 5,
         'dropout': 0.35,
-        'activation': torch.nn.LeakyReLU(),
+        'activation': torch.nn.ReLU(),
         'max_distance': 64,
         'distance_emb_size': 8,
         'rnn': {
@@ -26,10 +26,6 @@ config = {
         'relemb':{
             'emb_size': 256,
         },
-        'relconv':{
-            'layers': [None,] * 3,
-            'kernel_size': 7
-        },
         'pretrained_files': {
             'word': 'data/glove.6B/glove.6B.50d.txt'
         },
@@ -40,7 +36,7 @@ config = {
             'balance_factor': 1.5,
             'label_smoothing': 0.01,
             'focal_gamma': 2,
-            'inference_interval': 100,
+            'inference_interval': 1,
             'inference_training_set': False
         }
     },
@@ -49,7 +45,7 @@ config = {
             'word': 'data/glove.6B/glove.6B.50d.txt'
         },
         'trainer': {
-            'num_epochs': 100,
+            'num_epochs': 20,
             'patience': None,
             'serialization_dir': 'log.{}'.format(time.strftime("%Y%m%d-%H%M%S", time.gmtime())),
         },

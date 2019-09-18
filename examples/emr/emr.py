@@ -154,3 +154,6 @@ def main():
 """
 This example show a full pipeline how to work with `regr`.
 """
+
+if __name__ == '__main__':
+    main()

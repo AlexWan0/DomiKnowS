@@ -13,7 +13,7 @@ with Graph('global') as graph:
         sentence = Concept(name='sentence')
 
         pair = Concept(name='pair')
-        pair.has_a(phrase, phrase)
+        pair.has_a(word, word)
 
     with Graph('application') as app_graph:
         people = Concept(name='people')
