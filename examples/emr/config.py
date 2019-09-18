@@ -61,9 +61,6 @@ config = {
         'iterator': {
             'batch_size': 8,
         }
-    },
-    'Source': {
-        'emr': caller_source()
     }
 }
 
