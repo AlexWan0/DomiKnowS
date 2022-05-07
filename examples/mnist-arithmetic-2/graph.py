@@ -1,6 +1,6 @@
 from regr.graph.concept import EnumConcept
 from regr.graph import Graph, Concept, Relation
-from regr.graph.logicalConstrain import ifL, nandL, orL, notL, andL, atMostL
+from regr.graph.logicalConstrain import ifL, nandL, orL, notL, andL, atMostL, exactL
 from regr.graph.relation import disjoint
 import config
 from itertools import product
@@ -38,6 +38,10 @@ with Graph(name='global') as graph:
     s = images(name='summations',
                 ConceptClass=EnumConcept,
                 values=summations)
+
+    exactL(*d0.attributes)
+    exactL(*d1.attributes)
+    exactL(*s.attributes)
 
     for d0_nm in digits_0:
         for d1_nm in digits_1:
