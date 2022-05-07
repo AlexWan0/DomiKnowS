@@ -13,58 +13,71 @@ from operator import itemgetter
 
 from graph import digits_0, digits_1, summations, name_to_number
 
-from model import build_program, sum_func
+from model import build_program
 import config
+
 
 trainloader, validloader, testloader = get_readers()
 
-#program = LearningBasedProgram(graph, Model)
 
-def argmax(lst):
-    index, _ = max(enumerate(lst), key=itemgetter(1))
-    return index
+def get_pred_from_node(node, suffix):
+    digit0_pred = torch.argmax(node.getAttribute(f'<digits0>{suffix}'))
+    digit1_pred = torch.argmax(node.getAttribute(f'<digits1>{suffix}'))
+    summation_pred = torch.argmax(node.getAttribute(f'<summations>{suffix}'))
 
-def get_classification_report(program, reader, total=None, verbose=False):
-    pred_all = []
-    label_all = []
+    return digit0_pred, digit1_pred, summation_pred
 
-    for node in tqdm(program.populate(reader, device='auto'), total=total):
+
+def get_classification_report(program, reader, total=None):
+    digits_results = {
+        'label': []
+    }
+
+    summation_results = {
+        'label': []
+    }
+
+    infer_suffixes = ['/ILP', '/local/argmax']
+
+    for suffix in infer_suffixes:
+        digits_results[suffix] = []
+        summation_results[suffix] = []
+
+    for i, node in tqdm(enumerate(program.populate(reader, device='auto')), total=total):
         node.inferILPResults()
 
-        suffix = "/ILP"
-        idx = 0
+        for suffix in infer_suffixes:
+            digit0_pred, digit1_pred, summation_pred = get_pred_from_node(node, suffix)
 
-        pred_digit_0_distr = list(map(lambda nm: node.getAttribute("<" + nm + f">{suffix}")[idx], digits_0))
-        pred_digit_1_distr = list(map(lambda nm: node.getAttribute("<" + nm + f">{suffix}")[idx], digits_1))
-        pred_sum_distr = list(map(lambda nm: node.getAttribute("<" + nm + f">{suffix}")[idx], summations))
+            digits_results[suffix].append(digit0_pred)
+            digits_results[suffix].append(digit1_pred)
 
-        pred_digit_0 = argmax(pred_digit_0_distr)
-        pred_digit_1 = argmax(pred_digit_1_distr)
-        pred_sum = argmax(pred_sum_distr)
+            summation_results[suffix].append(summation_pred)
 
-        label = node.getAttribute('label').item()
+        digits_results['label'].append(node.getAttribute('digit0_label').item())
+        digits_results['label'].append(node.getAttribute('digit1_label').item())
+        summation_results['label'].append(node.getAttribute('<summations>/label').item())
 
-        if verbose:
-            print('pred:', pred_digit_0, pred_digit_1, pred_sum, 'label:', label)
+    for suffix in infer_suffixes:
+        print('============== RESULTS FOR:', suffix, '==============')
 
-        label_all.append(label)
-        pred_all.append(pred_sum)
+        print(classification_report(digits_results['label'], digits_results[suffix]))
+        print(classification_report(summation_results['label'], summation_results[suffix]))
 
-    return classification_report(label_all, pred_all)
+        print('==========================================')
 
 
 program = build_program()
 
-# print(get_classification_report(program, validloader, total=config.num_valid, verbose=True))
+#get_classification_report(program, validloader, total=config.num_valid)
 
-for i in range(10):
+for i in range(1, 11):
     print("EPOCH", i)
 
     program.train(trainloader,
               train_epoch_num=1,
-              Optim=partial(torch.optim.SGD,
-                            lr=config.lr),
+              Optim=lambda x: torch.optim.Adam(x, lr=0.001),
               device='auto')
 
     # validation
-    print(get_classification_report(program, trainloader, total=config.num_train, verbose=True))
+    get_classification_report(program, validloader, total=config.num_valid)
